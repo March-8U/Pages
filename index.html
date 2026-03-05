@@ -1,1 +1,1755 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小番茄图片混淆批量处理工具</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 全局样式 */
+        :root {
+            --primary-color: #3b82f6;
+            --primary-hover: #2563eb;
+            --secondary-color: #10b981;
+            --secondary-hover: #059669;
+            --accent-color: #8b5cf6;
+            --accent-hover: #7c3aed;
+            --danger-color: #ef4444;
+            --danger-hover: #dc2626;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius-sm: 0.25rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+        }
 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* 主容器 */
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 顶部栏 */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            z-index: 100;
+        }
+
+        .header-content {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* 顶部控制按钮 */
+        .header-controls {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .header-control-button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        /* 文件计数徽章 */
+        .file-count-badge {
+            min-width: 20px;
+            height: 20px;
+            line-height: 20px;
+            text-align: center;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .download-button:hover .file-count-badge {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* 环形进度条 */
+        .circular-progress {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 99;
+            animation: slide-up 0.4s ease-in-out;
+        }
+
+        @keyframes slide-up {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .progress-circle {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            background-color: var(--bg-primary);
+            border-radius: 50%;
+            box-shadow: var(--shadow-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .progress-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: rotate(-90deg);
+        }
+
+        .progress-circle-bg {
+            fill: none;
+            stroke: var(--border-color);
+            stroke-width: 4;
+        }
+
+        .progress-circle-fill {
+            fill: none;
+            stroke: var(--primary-color);
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-dasharray: 157;
+            stroke-dashoffset: 157;
+            transition: stroke-dashoffset 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .circular-progress {
+                bottom: 1rem;
+                right: 1rem;
+            }
+
+            .progress-circle {
+                width: 50px;
+                height: 50px;
+            }
+
+            .progress-svg {
+                width: 50px;
+                height: 50px;
+            }
+
+            .progress-circle-bg,
+            .progress-circle-fill {
+                r: 20;
+                stroke-width: 3;
+            }
+
+            .progress-circle-fill {
+                stroke-dasharray: 126;
+                stroke-dashoffset: 126;
+            }
+
+            .progress-text {
+                font-size: 10px;
+            }
+        }
+
+        .header-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header-logo {
+            font-size: 1.8rem;
+        }
+
+        /* 主内容区 */
+        .main-content {
+            flex: 1;
+            width: 100%;
+            padding: 6rem 1.5rem 2rem;
+        }
+
+        /* 欢迎卡片 */
+        .welcome-card {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+            color: white;
+            border-radius: var(--radius-xl);
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-md);
+            text-align: center;
+        }
+
+        .welcome-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .welcome-desc {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* 功能卡片 */
+        .card {
+            background: var(--bg-primary);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* 文件上传区域 */
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: var(--bg-secondary);
+            display: block;
+            outline: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background-color: #eff6ff;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            transition: color 0.3s ease;
+        }
+
+        .upload-area:hover .upload-icon {
+            color: var(--primary-color);
+        }
+
+        .upload-text {
+            margin-bottom: 1rem;
+        }
+
+        .upload-text h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-text p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .upload-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .upload-btn:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        #selectedFiles {
+            margin-top: 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-align: left;
+            padding: 1rem;
+            background-color: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        /* 控制按钮区域 */
+        .controls {
+            margin-top: 2rem;
+        }
+
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+
+        .control-button {
+            padding: 0.875rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        .encrypt-button {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .encrypt-button:hover:not(:disabled) {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .decrypt-button {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        .decrypt-button:hover:not(:disabled) {
+            background-color: var(--secondary-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .invert-button {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .invert-button:hover:not(:disabled) {
+            background-color: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .download-button {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .download-button:hover:not(:disabled) {
+            background-color: var(--danger-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .control-button:disabled {
+            background-color: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* 进度条 */
+        .progress-section {
+            margin-top: 2rem;
+            background-color: var(--bg-tertiary);
+            padding: 1.5rem;
+            border-radius: var(--radius-lg);
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .progress-label {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .progress-counter {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .progress-bar {
+            height: 0.75rem;
+            background-color: var(--border-color);
+            border-radius: 9999px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--primary-hover));
+            border-radius: 9999px;
+            transition: width 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.2) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.2) 50%, rgba(255, 255, 255, 0.2) 75%, transparent 75%, transparent);
+            background-size: 1rem 1rem;
+            animation: progress-animation 1s linear infinite;
+        }
+
+        @keyframes progress-animation {
+            0% {
+                background-position: 1rem 0;
+            }
+            100% {
+                background-position: 0 0;
+            }
+        }
+
+        /* 图片网格 */
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .image-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .image-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .image-preview-container {
+            height: 220px;
+            background-color: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+        }
+        
+        /* 图片右上角状态标记 */
+        .image-status-badge {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            z-index: 10;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            display: none;
+        }
+        
+        .image-status-badge.visible {
+            display: inline-block;
+        }
+        
+        .image-status-badge.encrypted {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .image-status-badge.decrypted {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .image-status-badge.inverted {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .image-info {
+            padding: 1.25rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .image-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .image-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 0.5rem;
+            margin-top: auto;
+        }
+
+        .image-action-btn {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+        }
+
+        .image-action-btn:hover {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        /* 操作计数样式 */
+        .action-counter {
+            position: absolute;
+            top: 0.5rem;
+            left: 0.5rem;
+            min-width: 18px;
+            height: 18px;
+            line-height: 18px;
+            text-align: center;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 12px;
+            z-index: 11;
+        }
+
+        .image-status {
+            margin-top: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        /* 状态样式 */
+        .status-waiting {
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+
+        .status-processing {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-success {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        .status-error {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-downloaded {
+            background-color: #ddd6fe;
+            color: #5b21b6;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-state-text h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state-text p {
+            color: var(--text-muted);
+        }
+
+        /* 页脚 */
+        .footer {
+            background-color: var(--bg-primary);
+            border-top: 1px solid var(--border-color);
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* 加载动画 */
+        .loader {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 图片预览模态窗口 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            overflow: auto;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-content {
+            position: relative;
+            margin: 5% auto;
+            width: 90%;
+            max-width: 900px;
+            animation: modal-fade-in 0.3s ease;
+        }
+
+        @keyframes modal-fade-in {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .close-button {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            color: white;
+            font-size: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close-button:hover {
+            color: var(--primary-color);
+        }
+
+        .modal-image {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: var(--radius-md);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .header-title {
+                font-size: 1.25rem;
+            }
+
+            .main-content {
+                padding: 1.5rem 1rem;
+            }
+
+            .welcome-card {
+                padding: 2rem 1rem;
+            }
+
+            .welcome-title {
+                font-size: 1.75rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .upload-area {
+                padding: 2rem 1rem;
+            }
+
+            .buttons-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .images-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+            }
+
+            .modal-image {
+                max-height: 70vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 隐藏的文件输入 -->
+        <input type="file" id="fileInput" accept="image/*" multiple style="display: none;">
+        
+        <!-- 顶部栏 -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-title">
+                    <i class="fas fa-image header-logo"></i>
+                    小番茄图片混淆批量处理工具
+                </div>
+                <div class="header-controls">
+                    <label for="fileInput" class="header-control-button encrypt-button">
+                        <i class="fas fa-upload"></i> 上传图片
+                    </label>
+                    <!-- 批量处理按钮已隐藏 -->
+                    <button id="encryptBtn" class="header-control-button encrypt-button" disabled style="display: none;">
+                        <i class="fas fa-lock"></i> 批量混淆
+                    </button>
+                    <button id="decryptBtn" class="header-control-button decrypt-button" disabled style="display: none;">
+                        <i class="fas fa-unlock"></i> 批量解混淆
+                    </button>
+                    <button id="downloadBtn" class="header-control-button download-button" disabled>
+                        <i class="fas fa-download"></i> 下载所有
+                        <span class="file-count-badge">0</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 环形进度条 -->
+        <div class="circular-progress" style="display: none;">
+            <div class="progress-circle">
+                <svg class="progress-svg" width="60" height="60">
+                    <circle class="progress-circle-bg" cx="30" cy="30" r="25" />
+                    <circle class="progress-circle-fill" cx="30" cy="30" r="25" id="progressFill" />
+                </svg>
+                <div class="progress-text" id="progressText">0%</div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+
+
+
+
+            <!-- 图片预览卡片 -->
+            <section class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-images"></i>
+                    图片预览
+                </h2>
+                <div class="images-grid" id="imageGrid">
+                    <!-- 空状态 -->
+                    <div id="emptyState" class="empty-state">
+                        <div class="empty-state-icon">
+                            <i class="fas fa-picture-o"></i>
+                        </div>
+                        <div class="empty-state-text">
+                            <h3>暂无图片</h3>
+                            <p>请上传图片以开始处理</p>
+                        </div>
+                    </div>
+                    <!-- 图片将在这里动态生成 -->
+                </div>
+            </section>
+        </main>
+
+        <!-- 页脚 -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p>© 2023 小番茄图片混淆批量处理工具 | 基于希尔伯特曲线算法</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- 图片预览模态窗口 -->
+    <div id="imagePreviewModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <img id="modalImage" class="modal-image" src="" alt="预览图片">
+        </div>
+    </div>
+
+    <script>
+        // 希尔伯特曲线生成函数（核心算法）
+        function gilbert2d(width, height) {
+            const coordinates = [];
+
+            if (width >= height) {
+                generate2d(0, 0, width, 0, 0, height, coordinates);
+            } else {
+                generate2d(0, 0, 0, height, width, 0, coordinates);
+            }
+
+            return coordinates;
+        }
+
+        function generate2d(x, y, ax, ay, bx, by, coordinates) {
+            const w = Math.abs(ax + ay);
+            const h = Math.abs(bx + by);
+
+            const dax = Math.sign(ax), day = Math.sign(ay);
+            const dbx = Math.sign(bx), dby = Math.sign(by);
+
+            if (h === 1) {
+                for (let i = 0; i < w; i++) {
+                    coordinates.push([x, y]);
+                    x += dax;
+                    y += day;
+                }
+                return;
+            }
+
+            if (w === 1) {
+                for (let i = 0; i < h; i++) {
+                    coordinates.push([x, y]);
+                    x += dbx;
+                    y += dby;
+                }
+                return;
+            }
+
+            let ax2 = Math.floor(ax / 2), ay2 = Math.floor(ay / 2);
+            let bx2 = Math.floor(bx / 2), by2 = Math.floor(by / 2);
+
+            const w2 = Math.abs(ax2 + ay2);
+            const h2 = Math.abs(bx2 + by2);
+
+            if (2 * w > 3 * h) {
+                if ((w2 % 2) && (w > 2)) {
+                    ax2 += dax;
+                    ay2 += day;
+                }
+
+                generate2d(x, y, ax2, ay2, bx, by, coordinates);
+                generate2d(x + ax2, y + ay2, ax - ax2, ay - ay2, bx, by, coordinates);
+
+            } else {
+                if ((h2 % 2) && (h > 2)) {
+                    bx2 += dbx;
+                    by2 += dby;
+                }
+
+                generate2d(x, y, bx2, by2, ax2, ay2, coordinates);
+                generate2d(x + bx2, y + by2, ax, ay, bx - bx2, by - by2, coordinates);
+                generate2d(x + (ax - dax) + (bx2 - dbx), y + (ay - day) + (by2 - dby),
+                    -bx2, -by2, -(ax - ax2), -(ay - ay2), coordinates);
+            }
+        }
+
+        // 加密函数（混淆图片）
+        function encrypt(img) {
+            return new Promise((resolve) => {
+                const cvs = document.createElement("canvas");
+                const width = cvs.width = img.width;
+                const height = cvs.height = img.height;
+                const ctx = cvs.getContext("2d");
+                ctx.drawImage(img, 0, 0);
+                const imgdata = ctx.getImageData(0, 0, width, height);
+                const imgdata2 = new ImageData(width, height);
+                const curve = gilbert2d(width, height);
+                const offset = Math.round((Math.sqrt(5) - 1) / 2 * width * height);
+                
+                for(let i = 0; i < width * height; i++){
+                    const old_pos = curve[i];
+                    const new_pos = curve[(i + offset) % (width * height)];
+                    const old_p = 4 * (old_pos[0] + old_pos[1] * width);
+                    const new_p = 4 * (new_pos[0] + new_pos[1] * width);
+                    imgdata2.data.set(imgdata.data.slice(old_p, old_p + 4), new_p);
+                }
+                
+                ctx.putImageData(imgdata2, 0, 0);
+                cvs.toBlob(b => {
+                    resolve(URL.createObjectURL(b));
+                }, "image/jpeg", 0.95);
+            });
+        }
+
+        // 解密函数（解混淆图片）
+        function decrypt(img) {
+            return new Promise((resolve) => {
+                const cvs = document.createElement("canvas");
+                const width = cvs.width = img.width;
+                const height = cvs.height = img.height;
+                const ctx = cvs.getContext("2d");
+                ctx.drawImage(img, 0, 0);
+                const imgdata = ctx.getImageData(0, 0, width, height);
+                const imgdata2 = new ImageData(width, height);
+                const curve = gilbert2d(width, height);
+                const offset = Math.round((Math.sqrt(5) - 1) / 2 * width * height);
+                
+                for(let i = 0; i < width * height; i++){
+                    const old_pos = curve[i];
+                    const new_pos = curve[(i + offset) % (width * height)];
+                    const old_p = 4 * (old_pos[0] + old_pos[1] * width);
+                    const new_p = 4 * (new_pos[0] + new_pos[1] * width);
+                    imgdata2.data.set(imgdata.data.slice(new_p, new_p + 4), old_p);
+                }
+                
+                ctx.putImageData(imgdata2, 0, 0);
+                cvs.toBlob(b => {
+                    resolve(URL.createObjectURL(b));
+                }, "image/jpeg", 0.95);
+            });
+        }
+
+        // 反色函数
+        function invertColors(img) {
+            return new Promise((resolve) => {
+                const cvs = document.createElement("canvas");
+                const width = cvs.width = img.width;
+                const height = cvs.height = img.height;
+                const ctx = cvs.getContext("2d");
+                ctx.drawImage(img, 0, 0);
+                const imgdata = ctx.getImageData(0, 0, width, height);
+                const data = imgdata.data;
+                
+                // 对每个像素进行反色处理
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = 255 - data[i];     // 红色
+                    data[i + 1] = 255 - data[i + 1]; // 绿色
+                    data[i + 2] = 255 - data[i + 2]; // 蓝色
+                    // 保留透明度
+                }
+                
+                ctx.putImageData(imgdata, 0, 0);
+                cvs.toBlob(b => {
+                    resolve(URL.createObjectURL(b));
+                }, "image/jpeg", 0.95);
+            });
+        }
+
+        // DOM元素引用
+        const fileInput = document.getElementById('fileInput');
+        const encryptBtn = document.getElementById('encryptBtn');
+        const decryptBtn = document.getElementById('decryptBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const selectedFiles = document.getElementById('selectedFiles');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const imageGrid = document.getElementById('imageGrid');
+        const emptyState = document.getElementById('emptyState');
+        
+        // 存储上传的图片和处理结果
+        let uploadedImages = [];
+        let processedImages = [];
+        let isProcessing = false;
+        
+        // 文件选择事件
+        fileInput.addEventListener('change', function(e) {
+            if (isProcessing) {
+                alert('请等待当前处理完成后再上传新图片');
+                return;
+            }
+            
+            if (e.target.files.length > 0) {
+                // 更新下载按钮上的文件计数徽章
+                const fileCountBadge = document.querySelector('.file-count-badge');
+                fileCountBadge.textContent = e.target.files.length;
+                
+                encryptBtn.disabled = false;
+                decryptBtn.disabled = false;
+                
+                // 隐藏空状态
+                emptyState.style.display = 'none';
+                
+                // 清空之前的图片
+                uploadedImages = [];
+                processedImages = [];
+                
+                // 清空图片网格，但保留空状态元素
+                Array.from(imageGrid.children).forEach(child => {
+                    if (child.id !== 'emptyState') {
+                        child.remove();
+                    }
+                });
+                
+                // 处理每个文件
+                Array.from(e.target.files).forEach((file, index) => {
+                    const uniqueId = Date.now() + index; // 生成唯一ID
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = new Image();
+                        img.onload = function() {
+                            uploadedImages.push({
+                                id: uniqueId,
+                                index: index,
+                                name: file.name,
+                                originalUrl: URL.createObjectURL(file),
+                                image: img,
+                                width: img.width,
+                                height: img.height
+                            });
+                            
+                            // 添加到预览网格
+                            const imageItem = document.createElement('div');
+                            imageItem.className = 'image-card';
+                            imageItem.setAttribute('data-image-id', uniqueId);
+                            imageItem.innerHTML = `
+                                <div class="image-preview-container">
+                                    <img class="image-preview" src="${URL.createObjectURL(file)}" alt="${file.name}">
+                                    <div class="image-status-badge" data-image-id="${uniqueId}"></div>
+                                    <div class="action-counter" data-image-id="${uniqueId}">0</div>
+                                </div>
+                                <div class="image-info">
+                                    <div class="image-name">${file.name}</div>
+                                    <div class="image-actions">
+                                        <button class="image-action-btn encrypt-single-btn" onclick="encryptSingleImage('${uniqueId}')">
+                                            <i class="fas fa-lock"></i>
+                                            混淆
+                                        </button>
+                                        <button class="image-action-btn decrypt-single-btn" onclick="decryptSingleImage('${uniqueId}')">
+                                            <i class="fas fa-unlock"></i>
+                                            解混淆
+                                        </button>
+                                        <button class="image-action-btn" onclick="invertSingleImage('${uniqueId}')">
+                                            <i class="fas fa-adjust"></i>
+                                            反色
+                                        </button>
+                                        <button class="image-action-btn" onclick="downloadSingleImage('${uniqueId}')">
+                                            <i class="fas fa-download"></i>
+                                            下载
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                            imageGrid.appendChild(imageItem);
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+                
+                // 为新添加的图片添加预览功能
+                setTimeout(addImagePreviewListeners, 100);
+            } else {
+                // 没有选择文件时，重置计数徽章
+                const fileCountBadge = document.querySelector('.file-count-badge');
+                fileCountBadge.textContent = '0';
+                encryptBtn.disabled = true;
+                decryptBtn.disabled = true;
+                downloadBtn.disabled = true;
+            }
+        });
+        
+        // 批量处理函数
+        async function batchProcess(mode) {
+            if (uploadedImages.length === 0 || isProcessing) return;
+            
+            isProcessing = true;
+            encryptBtn.disabled = true;
+            decryptBtn.disabled = true;
+            downloadBtn.disabled = true;
+            
+            // 显示环形进度条
+            const circularProgress = document.querySelector('.circular-progress');
+            circularProgress.style.display = 'block';
+            
+            const total = uploadedImages.length;
+            let completed = 0;
+            
+            // 计算环形进度条的参数
+            const isMobile = window.innerWidth <= 768;
+            const circumference = isMobile ? 126 : 157;
+            
+            // 初始化进度条
+            progressFill.style.strokeDashoffset = circumference;
+            document.getElementById('progressText').textContent = '0%';
+            
+            // 依次处理每张图片，添加延迟避免UI阻塞
+            for (let i = 0; i < total; i++) {
+                const imageData = uploadedImages[i];
+                const statusElement = document.querySelector(`.image-status[data-image-id="${imageData.id}"]`);
+                
+                try {
+                    statusElement.textContent = '处理中...';
+                    statusElement.className = 'image-status status-processing';
+                    
+                    // 添加延迟，避免UI阻塞
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    
+                    let processFunc;
+                    let statusText;
+                    
+                    switch(mode) {
+                        case 'encrypt':
+                            processFunc = encrypt;
+                            statusText = '已混淆';
+                            break;
+                        case 'decrypt':
+                            processFunc = decrypt;
+                            statusText = '已解混淆';
+                            break;
+                        case 'invert':
+                            processFunc = invertColors;
+                            statusText = '已反色';
+                            break;
+                        default:
+                            throw new Error('未知的处理模式');
+                    }
+                    
+                    // 获取当前显示的图片（可能是已处理过的）
+                    const imageCard = document.querySelector(`.image-card[data-image-id="${imageData.id}"]`);
+                    const imgPreview = imageCard.querySelector('.image-preview');
+                    const currentImg = new Image();
+                    currentImg.src = imgPreview.src;
+                    await new Promise(resolve => {
+                        currentImg.onload = resolve;
+                    });
+                    
+                    const processedUrl = await processFunc(currentImg);
+                    
+                    // 更新或添加处理后的图片数据
+                    const existingIndex = processedImages.findIndex(img => img.id == imageData.id);
+                    if (existingIndex !== -1) {
+                        processedImages[existingIndex].processedUrl = processedUrl;
+                        processedImages[existingIndex].mode = mode;
+                    } else {
+                        processedImages.push({
+                            id: imageData.id,
+                            index: imageData.index,
+                            name: imageData.name,
+                            originalUrl: imageData.originalUrl,
+                            processedUrl: processedUrl,
+                            mode: mode
+                        });
+                    }
+                    
+                    // 更新预览
+                    if (statusElement && statusElement.closest('.image-card')) {
+                        const imageCard = statusElement.closest('.image-card');
+                        const imgPreview = imageCard.querySelector('.image-preview');
+                        imgPreview.src = processedUrl;
+                        
+                        // 更新右上角状态标记
+                        const statusBadge = imageCard.querySelector('.image-status-badge');
+                        if (statusBadge) {
+                            if (mode === 'decrypt') {
+                                statusBadge.textContent = '已解混淆';
+                                statusBadge.className = 'image-status-badge decrypted visible';
+                            } else if (mode === 'invert') {
+                                statusBadge.textContent = '已反色';
+                                statusBadge.className = 'image-status-badge inverted visible';
+                            } else {
+                                statusBadge.textContent = '已混淆';
+                                statusBadge.className = 'image-status-badge encrypted visible';
+                            }
+                        }
+                    }
+                    
+                    statusElement.textContent = statusText;
+                    statusElement.className = 'image-status status-success';
+                    
+                } catch (error) {
+                    statusElement.textContent = '处理失败';
+                    statusElement.className = 'image-status status-error';
+                    console.error(`处理图片 ${imageData.name} 时出错:`, error);
+                }
+                
+                completed++;
+                const progress = Math.round((completed / total) * 100);
+                // 更新环形进度条
+                const offset = circumference - (progress / 100) * circumference;
+                progressFill.style.strokeDashoffset = offset;
+                document.getElementById('progressText').textContent = `${progress}%`;
+                
+                // 添加短暂延迟，避免UI阻塞
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            
+            // 处理完成后隐藏进度条
+            setTimeout(() => {
+                circularProgress.style.display = 'none';
+                // 为处理后的图片重新添加预览功能
+                addImagePreviewListeners();
+            }, 500);
+            
+            isProcessing = false;
+            downloadBtn.disabled = false;
+        }
+        
+        // 按钮事件
+        encryptBtn.addEventListener('click', () => batchProcess('encrypt'));
+        decryptBtn.addEventListener('click', () => batchProcess('decrypt'));
+        
+        // 下载所有图片
+        downloadBtn.addEventListener('click', async function() {
+            if (uploadedImages.length === 0) {
+                alert('没有图片可下载');
+                return;
+            }
+            
+            // 显示环形进度条
+            const circularProgress = document.querySelector('.circular-progress');
+            circularProgress.style.display = 'block';
+            
+            const total = uploadedImages.length;
+            let completed = 0;
+            
+            // 计算环形进度条的参数
+            const isMobile = window.innerWidth <= 768;
+            const circumference = isMobile ? 126 : 157;
+            
+            // 初始化进度条
+            progressFill.style.strokeDashoffset = circumference;
+            document.getElementById('progressText').textContent = '0%';
+            
+            try {
+                for (let i = 0; i < total; i++) {
+                    const imageData = uploadedImages[i];
+                    
+                    try {
+                        // 检查是否有处理过的图片
+                        const processedImage = processedImages.find(img => img.id == imageData.id);
+                        
+                        if (processedImage) {
+                            // 下载处理过的图片
+                            await downloadSingleImage(processedImage.id);
+                        } else {
+                            // 下载原图
+                            const response = await fetch(imageData.originalUrl);
+                            const blob = await response.blob();
+                            const a = document.createElement('a');
+                            a.href = URL.createObjectURL(blob);
+                            a.download = imageData.name;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            
+                            // 更新状态
+                            const statusElement = document.querySelector(`.image-status[data-image-id="${imageData.id}"]`);
+                            if (statusElement) {
+                                statusElement.textContent = '已下载原图';
+                                statusElement.className = 'image-status status-downloaded';
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`下载图片 ${imageData.name} 时出错:`, error);
+                        const statusElement = document.querySelector(`.image-status[data-image-id="${imageData.id}"]`);
+                        if (statusElement) {
+                            statusElement.textContent = '下载失败';
+                            statusElement.className = 'image-status status-error';
+                        }
+                    }
+                    
+                    completed++;
+                    const progress = Math.round((completed / total) * 100);
+                    // 更新环形进度条
+                    const offset = circumference - (progress / 100) * circumference;
+                    progressFill.style.strokeDashoffset = offset;
+                    document.getElementById('progressText').textContent = `${progress}%`;
+                    
+                    // 添加一点延迟，避免同时发起太多下载请求
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                // 下载完成后显示提示
+                setTimeout(() => {
+                    alert('所有图片下载完成');
+                }, 500);
+            } catch (error) {
+                console.error('批量下载时出错:', error);
+                alert('批量下载过程中出现错误，请重试');
+            } finally {
+                // 处理完成后隐藏进度条
+                setTimeout(() => {
+                    circularProgress.style.display = 'none';
+                }, 500);
+            }
+        });
+        
+        // 单个图片混淆函数 - 暴露给全局，以便在动态生成的按钮中调用
+        window.encryptSingleImage = async function(id) {
+            const imageData = uploadedImages.find(img => img.id == id);
+            if (!imageData) return;
+
+            const statusElement = document.querySelector(`.image-status[data-image-id="${id}"]`);
+            const actionCounter = document.querySelector(`.action-counter[data-image-id="${id}"]`);
+            
+            if (statusElement) {
+                statusElement.textContent = '处理中...';
+                statusElement.className = 'image-status status-processing';
+            }
+
+            try {
+                // 获取当前显示的图片（可能是已处理过的）
+                const imageCard = document.querySelector(`.image-card[data-image-id="${id}"]`);
+                const imgPreview = imageCard.querySelector('.image-preview');
+                const currentImg = new Image();
+                currentImg.src = imgPreview.src;
+                await new Promise(resolve => {
+                    currentImg.onload = resolve;
+                });
+
+                // 对当前显示的图片进行混淆
+                const processedUrl = await encrypt(currentImg);
+
+                // 更新或添加处理后的图片数据
+                const existingIndex = processedImages.findIndex(img => img.id == id);
+                if (existingIndex !== -1) {
+                    processedImages[existingIndex].processedUrl = processedUrl;
+                    processedImages[existingIndex].mode = 'encrypt';
+                } else {
+                    processedImages.push({
+                        id: imageData.id,
+                        index: imageData.index,
+                        name: imageData.name,
+                        originalUrl: imageData.originalUrl,
+                        processedUrl: processedUrl,
+                        mode: 'encrypt'
+                    });
+                }
+                
+                // 更新预览
+                imgPreview.src = processedUrl;
+                
+                // 更新右上角状态标记
+                const statusBadge = imageCard.querySelector('.image-status-badge');
+                if (statusBadge) {
+                    statusBadge.textContent = '已混淆';
+                    statusBadge.className = 'image-status-badge encrypted visible';
+                }
+                
+                if (statusElement) {
+                    statusElement.textContent = '已混淆';
+                    statusElement.className = 'image-status status-success';
+                }
+                
+                // 更新计数（混淆计数+1）
+                if (actionCounter) {
+                    const count = parseInt(actionCounter.textContent) + 1;
+                    actionCounter.textContent = count;
+                }
+                
+                // 为处理后的图片重新添加预览功能
+                addImagePreviewListeners();
+                
+                downloadBtn.disabled = false;
+                
+            } catch (error) {
+                console.error(`处理图片 ${imageData.name} 时出错:`, error);
+                if (statusElement) {
+                    statusElement.textContent = '处理失败';
+                    statusElement.className = 'image-status status-error';
+                }
+            }
+        };
+
+        // 单个图片解混淆函数 - 暴露给全局，以便在动态生成的按钮中调用
+        window.decryptSingleImage = async function(id) {
+            const imageData = uploadedImages.find(img => img.id == id);
+            if (!imageData) return;
+
+            const statusElement = document.querySelector(`.image-status[data-image-id="${id}"]`);
+            const actionCounter = document.querySelector(`.action-counter[data-image-id="${id}"]`);
+            
+            if (statusElement) {
+                statusElement.textContent = '处理中...';
+                statusElement.className = 'image-status status-processing';
+            }
+
+            try {
+                // 获取当前显示的图片（可能是已处理过的）
+                const imageCard = document.querySelector(`.image-card[data-image-id="${id}"]`);
+                const imgPreview = imageCard.querySelector('.image-preview');
+                const currentImg = new Image();
+                currentImg.src = imgPreview.src;
+                await new Promise(resolve => {
+                    currentImg.onload = resolve;
+                });
+
+                // 对当前显示的图片进行解混淆
+                const processedUrl = await decrypt(currentImg);
+
+                // 更新或添加处理后的图片数据
+                const existingIndex = processedImages.findIndex(img => img.id == id);
+                if (existingIndex !== -1) {
+                    processedImages[existingIndex].processedUrl = processedUrl;
+                    processedImages[existingIndex].mode = 'decrypt';
+                } else {
+                    processedImages.push({
+                        id: imageData.id,
+                        index: imageData.index,
+                        name: imageData.name,
+                        originalUrl: imageData.originalUrl,
+                        processedUrl: processedUrl,
+                        mode: 'decrypt'
+                    });
+                }
+                
+                // 更新预览
+                imgPreview.src = processedUrl;
+                
+                // 更新右上角状态标记
+                const statusBadge = imageCard.querySelector('.image-status-badge');
+                if (statusBadge) {
+                    statusBadge.textContent = '已解混淆';
+                    statusBadge.className = 'image-status-badge decrypted visible';
+                }
+                
+                if (statusElement) {
+                    statusElement.textContent = '已解混淆';
+                    statusElement.className = 'image-status status-success';
+                }
+                
+                // 更新计数（解混淆计数-1，确保不小于0）
+                if (actionCounter) {
+                    let count = parseInt(actionCounter.textContent) - 1;
+                    count = Math.max(0, count); // 确保计数不小于0
+                    actionCounter.textContent = count;
+                }
+                
+                // 为处理后的图片重新添加预览功能
+                addImagePreviewListeners();
+                
+                downloadBtn.disabled = false;
+                
+            } catch (error) {
+                console.error(`处理图片 ${imageData.name} 时出错:`, error);
+                if (statusElement) {
+                    statusElement.textContent = '处理失败';
+                    statusElement.className = 'image-status status-error';
+                }
+            }
+        };
+
+        // 单个图片反色函数 - 暴露给全局，以便在动态生成的按钮中调用
+        window.invertSingleImage = async function(id) {
+            const imageData = uploadedImages.find(img => img.id == id);
+            if (!imageData) return;
+
+            const statusElement = document.querySelector(`.image-status[data-image-id="${id}"]`);
+            
+            if (statusElement) {
+                statusElement.textContent = '处理中...';
+                statusElement.className = 'image-status status-processing';
+            }
+
+            try {
+                // 获取当前显示的图片（可能是已处理过的）
+                const imageCard = document.querySelector(`.image-card[data-image-id="${id}"]`);
+                const imgPreview = imageCard.querySelector('.image-preview');
+                const currentImg = new Image();
+                currentImg.src = imgPreview.src;
+                await new Promise(resolve => {
+                    currentImg.onload = resolve;
+                });
+
+                // 对当前显示的图片进行反色
+                const processedUrl = await invertColors(currentImg);
+
+                // 更新或添加处理后的图片数据
+                const existingIndex = processedImages.findIndex(img => img.id == id);
+                if (existingIndex !== -1) {
+                    processedImages[existingIndex].processedUrl = processedUrl;
+                    processedImages[existingIndex].mode = 'invert';
+                } else {
+                    processedImages.push({
+                        id: imageData.id,
+                        index: imageData.index,
+                        name: imageData.name,
+                        originalUrl: imageData.originalUrl,
+                        processedUrl: processedUrl,
+                        mode: 'invert'
+                    });
+                }
+                
+                // 更新预览
+                imgPreview.src = processedUrl;
+                
+                // 更新右上角状态标记
+                const statusBadge = imageCard.querySelector('.image-status-badge');
+                if (statusBadge) {
+                    statusBadge.textContent = '已反色';
+                    statusBadge.className = 'image-status-badge inverted visible';
+                }
+                
+                if (statusElement) {
+                    statusElement.textContent = '已反色';
+                    statusElement.className = 'image-status status-success';
+                }
+                
+                // 为处理后的图片重新添加预览功能
+                addImagePreviewListeners();
+                
+                downloadBtn.disabled = false;
+                
+            } catch (error) {
+                console.error(`处理图片 ${imageData.name} 时出错:`, error);
+                if (statusElement) {
+                    statusElement.textContent = '处理失败';
+                    statusElement.className = 'image-status status-error';
+                }
+            }
+        };
+        
+        // 单个图片下载函数 - 暴露给全局，以便在动态生成的按钮中调用
+        window.downloadSingleImage = async function(id) {
+            const imageData = processedImages.find(img => img.id == id);
+            if (!imageData) {
+                // 如果找不到处理过的图片，尝试下载原图
+                const originalImage = uploadedImages.find(img => img.id == id);
+                if (originalImage) {
+                    try {
+                        const response = await fetch(originalImage.originalUrl);
+                        const blob = await response.blob();
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = originalImage.name;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        
+                        const statusElement = document.querySelector(`.image-status[data-image-id="${id}"]`);
+                        statusElement.textContent = '已下载原图';
+                        statusElement.className = 'image-status status-downloaded';
+                    } catch (error) {
+                        console.error(`下载原图 ${originalImage.name} 时出错:`, error);
+                        const statusElement = document.querySelector(`.image-status[data-image-id="${id}"]`);
+                        statusElement.textContent = '下载失败';
+                        statusElement.className = 'image-status status-error';
+                    }
+                }
+                return;
+            }
+            
+            try {
+                // 获取Blob数据
+                const response = await fetch(imageData.processedUrl);
+                const blob = await response.blob();
+                
+                // 创建下载链接
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `${imageData.name.replace(/\.[^/.]+$/, "")}_processed.jpg`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                // 更新状态
+                const statusElement = document.querySelector(`.image-status[data-image-id="${imageData.id}"]`);
+                statusElement.textContent = '已下载';
+                statusElement.className = 'image-status status-downloaded';
+                
+            } catch (error) {
+                console.error(`下载图片 ${imageData.name} 时出错:`, error);
+                const statusElement = document.querySelector(`.image-status[data-image-id="${imageData.id}"]`);
+                statusElement.textContent = '下载失败';
+                statusElement.className = 'image-status status-error';
+            }
+        };
+        
+        // 图片预览功能
+        const modal = document.getElementById('imagePreviewModal');
+        const modalImage = document.getElementById('modalImage');
+        const closeButton = document.querySelector('.close-button');
+        
+        // 打开模态窗口的函数
+        function openModal(imageSrc) {
+            modal.style.display = 'block';
+            modalImage.src = imageSrc;
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        }
+        
+        // 关闭模态窗口的函数
+        function closeModal() {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto'; // 恢复背景滚动
+        }
+        
+        // 为所有image-preview元素添加点击事件
+        function addImagePreviewListeners() {
+            const imagePreviews = document.querySelectorAll('.image-preview');
+            imagePreviews.forEach(img => {
+                img.addEventListener('click', function() {
+                    openModal(this.src);
+                });
+            });
+        }
+        
+        // 关闭按钮点击事件
+        closeButton.addEventListener('click', closeModal);
+        
+        // 点击模态窗口空白区域关闭
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+        
+        // 按ESC键关闭
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal.style.display === 'block') {
+                closeModal();
+            }
+        });
+        
+        // 拖放功能支持
+        const uploadArea = document.querySelector('.upload-area');
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#3b82f6';
+            uploadArea.style.backgroundColor = '#eff6ff';
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '#e2e8f0';
+            uploadArea.style.backgroundColor = '#f8fafc';
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#e2e8f0';
+            uploadArea.style.backgroundColor = '#f8fafc';
+            
+            if (e.dataTransfer.files.length > 0) {
+                // 将拖放的文件设置到fileInput中
+                fileInput.files = e.dataTransfer.files;
+                // 手动触发change事件
+                const event = new Event('change');
+                fileInput.dispatchEvent(event);
+            }
+        });
+    </script>
+</body>
+</html>
